@@ -1,64 +1,170 @@
 # Real-Time Fire Detection and Telegram Alert System using YOLOv8
 
-An individual Embedded Software Design course project that detects fire from a live webcam stream using a custom-trained YOLOv8s model and sends Telegram alerts when fire is confirmed.
+An individual **Embedded Software Design** project that detects fire from a live webcam stream using a custom-trained **YOLOv8s** model and sends an image alert through **Telegram** when fire is confirmed.
 
-## Overview
+> **Current status:** Working prototype tested with a laptop webcam.  
+> **Research direction:** This project motivated my interest in Embedded AI / Edge AI, especially model optimization and deployment on resource-constrained devices.
 
-The system processes frames from a laptop webcam, runs real-time fire detection with a custom YOLOv8s model, confirms detections across consecutive frames to reduce one-frame false alarms, and sends an alert image through Telegram.
+---
 
-Current prototype pipeline:
+## 1. Project Overview
 
-`Webcam -> YOLOv8s inference -> multi-frame fire confirmation -> bounding-box display -> Telegram alert`
+The system performs real-time fire detection from camera frames and sends a Telegram notification when a fire event is confirmed.
 
-## Project Highlights
+### Current pipeline
 
-- Custom YOLOv8s fire-detection model
-- Real-time webcam inference with OpenCV
+```mermaid
+flowchart LR
+    A[Laptop Webcam] --> B[OpenCV Frame Capture]
+    B --> C[Custom YOLOv8s Model]
+    C --> D{Fire detected?}
+    D -- No --> B
+    D -- Yes --> E[Multi-frame Confirmation]
+    E --> F[Display Bounding Box]
+    F --> G[Telegram Alert + Detected Frame]
+```
+
+The current prototype runs inference on a laptop. It is **not yet an Edge AI deployment**.
+
+---
+
+## 2. Main Features
+
+- Real-time fire detection using a custom-trained **YOLOv8s** model
+- Live webcam inference using **OpenCV**
+- Configurable confidence threshold
 - Multi-frame confirmation to reduce transient false positives
-- Telegram alert with the detected frame
-- Configurable confidence threshold and camera settings
-- Asynchronous Telegram sending so alerts do not block the detection loop
+- Automatic alarm clearing after consecutive negative frames
+- Telegram alert containing the detected frame
+- Asynchronous Telegram sending so network requests do not block the camera loop
+- Configurable camera index, image size, inference device and alert cooldown
 
-## Dataset and Training
+---
 
-The initial fire-detection dataset was sourced from Roboflow and was extended with additional real-world samples collected by the author.
+## 3. Dataset Preparation
 
-Additional data included:
-- self-collected fire images
-- red-light images used as hard-negative samples to reduce false positives from visually similar light sources
+The initial fire-detection dataset was sourced from **Roboflow** and was extended with additional real-world samples.
 
-The model was trained using Google Colab.
+I additionally collected:
 
-> Note: The full training dataset is not included in this repository. Add the original Roboflow dataset URL here if you want to make the data source directly traceable.
+- real fire images from practical tests
+- red-light images as **hard-negative samples**
 
-## Current Deployment
+The red-light samples were added because bright red/orange light sources can visually resemble fire and may cause false positives. Adding these examples helps the model learn that a red light source is not necessarily a fire event.
 
-The current prototype has been tested on a **laptop webcam** with inference running on the computer.
+The Roboflow project contained approximately **3.8k images before export / augmentation**.
 
-This repository does **not** claim an Edge AI deployment yet. A future direction is to optimize and deploy the model on resource-constrained edge hardware.
+> The full dataset is not included in this repository.  
+> Add the original Roboflow dataset/project URL here if public sharing is permitted by its license.
 
-## Project Structure
+---
+
+## 4. Model Training
+
+- **Model:** YOLOv8s
+- **Task:** Object detection
+- **Training environment:** Google Colab
+- **Inference test:** Laptop webcam
+- **Framework:** Ultralytics YOLO
+- **Input:** Camera frames
+- **Output:** Fire bounding boxes and confidence scores
+
+### Recommended additions
+
+If training outputs are still available, add the following to `assets/`:
+
+- `results.png`
+- `confusion_matrix.png`
+- `PR_curve.png`
+- `F1_curve.png`
+
+These figures make the repository much more useful for technical review.
+
+---
+
+## 5. Demo
+
+Create an `assets/` folder and add your own screenshots:
+
+```text
+assets/
+├── fire_detection_demo.png
+├── telegram_alert_demo.png
+└── dataset_sample.png
+```
+
+Then uncomment / update the image paths below.
+
+<!--
+### Fire Detection
+
+![Fire detection demo](assets/fire_detection_demo.png)
+
+### Telegram Alert
+
+![Telegram alert demo](assets/telegram_alert_demo.png)
+
+### Dataset Samples
+
+![Dataset samples](assets/dataset_sample.png)
+-->
+
+---
+
+## 6. Project Structure
 
 ```text
 real-time-fire-detection-yolov8/
-├── main.py
+├── models/
+│   └── fire.pt
 ├── fire_detector.py
+├── main.py
 ├── telegram_alert.py
 ├── requirements.txt
 ├── .gitignore
-└── models/
-    └── fire.pt
+└── README.md
 ```
 
-## Installation
+### File description
 
-Python 3.13 is recommended for the current tested environment.
+| File | Purpose |
+|---|---|
+| `main.py` | Runs webcam capture, fire confirmation logic, display and alert workflow |
+| `fire_detector.py` | Loads the trained YOLO model and performs fire detection |
+| `telegram_alert.py` | Sends Telegram alerts asynchronously |
+| `models/fire.pt` | Custom-trained YOLOv8s weights |
+| `requirements.txt` | Python dependencies |
+
+---
+
+## 7. Installation
+
+### Requirements
+
+- Python 3.13 tested
+- Webcam
+- Internet connection if Telegram alerts are enabled
+
+Clone the repository:
+
+```bash
+git clone https://github.com/loido0806/real-time-fire-detection-yolov8.git
+cd real-time-fire-detection-yolov8
+```
+
+Install dependencies:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-## Run Without Telegram
+---
+
+## 8. Run the Project
+
+### Detection only
+
+Run without Telegram:
 
 ```bash
 py -3.13 main.py --no-telegram
@@ -70,9 +176,33 @@ or:
 python main.py --no-telegram
 ```
 
-## Telegram Setup
+Press **Q** or **ESC** to exit.
 
-Create a Telegram bot using BotFather, then set the following environment variables before running the application.
+### Useful options
+
+Set the confidence threshold:
+
+```bash
+py -3.13 main.py --no-telegram --confidence 0.6
+```
+
+Use another camera:
+
+```bash
+py -3.13 main.py --camera 1 --no-telegram
+```
+
+Use a CUDA device when supported:
+
+```bash
+py -3.13 main.py --device 0 --no-telegram
+```
+
+---
+
+## 9. Telegram Alert Setup
+
+Create a Telegram bot using **BotFather**, obtain your bot token and chat ID, then set them as environment variables.
 
 ### PowerShell
 
@@ -87,37 +217,71 @@ Run:
 py -3.13 main.py
 ```
 
-Do **not** hard-code or commit your Telegram token.
+When a fire event is confirmed, the program sends a Telegram alert with the detected frame.
 
-## Useful Options
+> **Security:** Never hard-code or commit a real Telegram bot token or chat ID to a public repository.
 
-Lower the confidence threshold:
+---
 
-```bash
-py -3.13 main.py --no-telegram --confidence 0.4
+## 10. Fire Confirmation Logic
+
+A single positive frame may be caused by noise or a temporary false detection.
+
+The program therefore requires multiple consecutive positive frames before switching from:
+
+```text
+NORMAL -> FIRE
 ```
 
-Use a different camera:
+Similarly, the alarm is cleared only after multiple consecutive frames without a fire detection.
 
-```bash
-py -3.13 main.py --camera 1
-```
+This simple temporal confirmation mechanism helps reduce unstable one-frame alerts.
 
-Use a CUDA device when available:
+---
 
-```bash
-py -3.13 main.py --device 0
-```
+## 11. Current Limitations
 
-## Future Work
+- The current model has only been tested on a laptop webcam
+- Performance has not yet been benchmarked on embedded hardware
+- Detection can still be affected by lighting, camera quality, smoke, reflections and fire-like objects
+- The current prototype is based mainly on visual information
+- A systematic evaluation of precision, recall, mAP, latency and false-positive rate should be added
 
-- Evaluate precision, recall, mAP, false positives, and inference latency systematically
-- Improve robustness under difficult lighting and visually similar red/orange objects
-- Compare smaller YOLO variants for faster inference
-- Apply quantization or model compression
-- Deploy the model on an edge platform
-- Benchmark latency, memory usage, and power consumption after edge deployment
+---
 
-## Disclaimer
+## 12. Future Work — Embedded AI / Edge AI
 
-This is an academic prototype for learning and research. It is **not a certified fire-safety system** and should not be used as a substitute for approved fire-detection equipment.
+The next stage of this project is to move from laptop inference toward an embedded/edge implementation.
+
+Planned directions include:
+
+- deploy the model on an edge platform
+- compare YOLOv8s with smaller models for lower inference latency
+- export the model to ONNX / TensorRT / TFLite where appropriate
+- investigate INT8 quantization and model compression
+- measure inference latency, memory usage and power consumption
+- expand hard-negative data to reduce false alarms
+- evaluate precision, recall, mAP and false-positive rate systematically
+- explore integration with IoT sensors for multi-modal fire monitoring
+
+This is the main direction I would like to continue exploring in **Embedded AI / Edge AI**.
+
+---
+
+## 13. Technology Stack
+
+- Python
+- YOLOv8 / Ultralytics
+- OpenCV
+- Google Colab
+- Telegram Bot API
+- Roboflow
+- Git / GitHub
+
+---
+
+## 14. Disclaimer
+
+This repository is an **academic prototype for learning and research purposes**.
+
+It is **not a certified fire-safety system** and must not be used as a replacement for approved fire detection and alarm equipment.
