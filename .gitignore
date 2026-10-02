@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+config.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+__MACOSX/
+Thumbs.db
+
+# Runtime outputs
+runs/
+*.log
